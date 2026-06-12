@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getConnectionToken } from '@nestjs/mongoose';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { Connection } from 'mongoose';
+import { Connection, Types } from 'mongoose';
 import { AppModule } from './../src/app.module';
 
 type RegisterResponse = {
@@ -27,6 +27,9 @@ type TaskResponse = {
 describe('Task planner API (e2e)', () => {
   let app: INestApplication<App>;
   let connection: Connection;
+  let userIds: string[];
+  let projectIds: string[];
+  let taskIds: string[];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -37,12 +40,40 @@ describe('Task planner API (e2e)', () => {
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
       }),
     );
 
     connection = moduleFixture.get<Connection>(getConnectionToken());
 
     await app.init();
+  });
+
+  beforeEach(() => {
+    userIds = [];
+    projectIds = [];
+    taskIds = [];
+  });
+
+  afterEach(async () => {
+    await connection.collection('tasks').deleteMany({
+      _id: {
+        $in: taskIds.map((id) => new Types.ObjectId(id)),
+      },
+    });
+
+    await connection.collection('projects').deleteMany({
+      _id: {
+        $in: projectIds.map((id) => new Types.ObjectId(id)),
+      },
+    });
+
+    await connection.collection('users').deleteMany({
+      _id: {
+        $in: userIds.map((id) => new Types.ObjectId(id)),
+      },
+    });
   });
 
   afterAll(async () => {
@@ -96,6 +127,8 @@ describe('Task planner API (e2e)', () => {
     const adminToken = adminLoginBody.accessToken;
     const userToken = userLoginBody.accessToken;
 
+    userIds.push(adminRegisterBody.id, userRegisterBody.id);
+
     expect(adminRegisterBody.role).toBe('admin');
     expect(userRegisterBody.role).toBe('user');
     expect(adminToken).toBeDefined();
@@ -111,6 +144,7 @@ describe('Task planner API (e2e)', () => {
       .expect(201);
 
     const projectBody = projectResponse.body as ProjectResponse;
+    projectIds.push(projectBody._id);
 
     const taskResponse = await request(app.getHttpServer())
       .post('/tasks')
@@ -124,6 +158,7 @@ describe('Task planner API (e2e)', () => {
       .expect(201);
 
     const taskBody = taskResponse.body as TaskResponse;
+    taskIds.push(taskBody._id);
 
     expect(taskBody.status).toBe('not_started');
 
@@ -148,5 +183,162 @@ describe('Task planner API (e2e)', () => {
     const statusBody = statusResponse.body as TaskResponse;
 
     expect(statusBody.status).toBe('done');
+  });
+
+  it('checks basic auth and role rules', async () => {
+    const testId = Date.now();
+    const adminEmail = `admin-rules-${testId}@mail.com`;
+    const userEmail = `user-rules-${testId}@mail.com`;
+    const otherUserEmail = `other-user-rules-${testId}@mail.com`;
+
+    const adminRegisterResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: adminEmail,
+        password: '123456',
+        role: 'admin',
+      })
+      .expect(201);
+
+    const userRegisterResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: userEmail,
+        password: '123456',
+      })
+      .expect(201);
+
+    const otherUserRegisterResponse = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: otherUserEmail,
+        password: '123456',
+      })
+      .expect(201);
+
+    const adminLoginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: adminEmail,
+        password: '123456',
+      })
+      .expect(201);
+
+    const userLoginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: userEmail,
+        password: '123456',
+      })
+      .expect(201);
+
+    const otherUserLoginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: otherUserEmail,
+        password: '123456',
+      })
+      .expect(201);
+
+    const adminRegisterBody = adminRegisterResponse.body as RegisterResponse;
+    const userRegisterBody = userRegisterResponse.body as RegisterResponse;
+    const otherUserRegisterBody =
+      otherUserRegisterResponse.body as RegisterResponse;
+    const adminLoginBody = adminLoginResponse.body as LoginResponse;
+    const userLoginBody = userLoginResponse.body as LoginResponse;
+    const otherUserLoginBody = otherUserLoginResponse.body as LoginResponse;
+
+    const adminToken = adminLoginBody.accessToken;
+    const userToken = userLoginBody.accessToken;
+    const otherUserToken = otherUserLoginBody.accessToken;
+
+    userIds.push(
+      adminRegisterBody.id,
+      userRegisterBody.id,
+      otherUserRegisterBody.id,
+    );
+
+    await request(app.getHttpServer()).get('/tasks/my-tasks').expect(401);
+
+    await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        name: 'User Project',
+      })
+      .expect(403);
+
+    const projectResponse = await request(app.getHttpServer())
+      .post('/projects')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Rules Project',
+      })
+      .expect(201);
+
+    const projectBody = projectResponse.body as ProjectResponse;
+    projectIds.push(projectBody._id);
+
+    await request(app.getHttpServer())
+      .post('/tasks')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        title: 'User Task Create',
+        project: projectBody._id,
+        assignedTo: userRegisterBody.id,
+      })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .post('/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Missing Project Task',
+        project: new Types.ObjectId().toString(),
+        assignedTo: userRegisterBody.id,
+      })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .post('/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Missing User Task',
+        project: projectBody._id,
+        assignedTo: new Types.ObjectId().toString(),
+      })
+      .expect(404);
+
+    const taskResponse = await request(app.getHttpServer())
+      .post('/tasks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Rules Task',
+        project: projectBody._id,
+        assignedTo: userRegisterBody.id,
+      })
+      .expect(201);
+
+    const taskBody = taskResponse.body as TaskResponse;
+    taskIds.push(taskBody._id);
+
+    await request(app.getHttpServer())
+      .patch(`/tasks/${taskBody._id}/status`)
+      .set('Authorization', `Bearer ${otherUserToken}`)
+      .send({
+        status: 'done',
+      })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .patch(`/tasks/${taskBody._id}/status`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        status: 'wrong_status',
+      })
+      .expect(400);
+
+    expect(adminRegisterBody.role).toBe('admin');
+    expect(userRegisterBody.role).toBe('user');
   });
 });

@@ -8,6 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
@@ -17,6 +18,8 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TasksService } from './tasks.service';
 
+@ApiTags('tasks')
+@ApiBearerAuth()
 @Controller('tasks')
 export class TasksController {
   constructor(private tasksService: TasksService) {}

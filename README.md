@@ -171,3 +171,21 @@ E2E testte ana akışı denedim:
 - task oluşturma
 - user'ın kendi tasklarını görmesi
 - user'ın task status güncellemesi
+
+## Güncelleme notları
+
+Gelen geri bildirimlerden sonra projeye birkaç ekleme yaptım:
+
+- Swagger ekledim. API dokümanına `http://localhost:3000/api` adresinden bakılabilir.
+- Service'lere NestJS `Logger` ekledim.
+- MongoDB'yi lokalde daha kolay çalıştırmak için `docker-compose.yml` ekledim.
+- Global validation ayarını biraz daha sıkı tuttum: `whitelist`, `forbidNonWhitelisted` ve `transform` açık.
+- Task oluştururken project ve assigned user gerçekten var mı diye kontrol ekledim.
+- Unit test tarafında task create, listeleme, status update ve bazı hata durumlarını denedim.
+- E2E testte auth, role kontrolü, task sahipliği ve yanlış status gibi birkaç senaryoyu da ekledim.
+
+MongoDB lokalde kurulu değilse şu komutla çalıştırılabilir:
+
+```bash
+docker compose up -d
+```

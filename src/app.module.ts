@@ -17,7 +17,7 @@ import { TasksModule } from './tasks/tasks.module';
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGODB_URI'),
+        uri: configService.getOrThrow<string>('MONGODB_URI'),
       }),
     }),
 

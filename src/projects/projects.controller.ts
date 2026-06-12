@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
@@ -7,6 +8,8 @@ import { UserRole } from '../users/users.schema';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ProjectsService } from './projects.service';
 
+@ApiTags('projects')
+@ApiBearerAuth()
 @Controller('projects')
 export class ProjectsController {
   constructor(private projectsService: ProjectsService) {}

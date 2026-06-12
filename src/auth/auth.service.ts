@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -11,6 +12,8 @@ import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -30,6 +33,8 @@ export class AuthService {
       hashedPassword,
       registerDto.role,
     );
+
+    this.logger.log(`User registered: ${user.email}`);
 
     return {
       id: user._id,
@@ -59,6 +64,8 @@ export class AuthService {
       email: user.email,
       role: user.role,
     });
+
+    this.logger.log(`User logged in: ${user.email}`);
 
     return {
       accessToken: token,
