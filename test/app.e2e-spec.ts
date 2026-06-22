@@ -152,6 +152,7 @@ describe('Task planner API (e2e)', () => {
       .send({
         title: 'Test Task',
         description: 'E2E task',
+        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         project: projectBody._id,
         assignedTo: userRegisterBody.id,
       })
@@ -183,6 +184,23 @@ describe('Task planner API (e2e)', () => {
     const statusBody = statusResponse.body as TaskResponse;
 
     expect(statusBody.status).toBe('done');
+
+    const filteredTasksResponse = await request(app.getHttpServer())
+      .get('/tasks/my-tasks')
+      .query({
+        status: 'done',
+        search: 'test',
+        deadlineInDays: '3',
+        limit: '5',
+        skip: '0',
+      })
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+
+    const filteredTasksBody = filteredTasksResponse.body as TaskResponse[];
+
+    expect(filteredTasksBody).toHaveLength(1);
+    expect(filteredTasksBody[0]._id).toBe(taskBody._id);
   });
 
   it('checks basic auth and role rules', async () => {
