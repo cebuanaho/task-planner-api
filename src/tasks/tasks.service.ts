@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Project, ProjectDocument } from '../projects/projects.schema';
+import { TaskHistoryService } from '../task-history/task-history.service';
 import { User, UserDocument } from '../users/users.schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
@@ -24,6 +25,7 @@ export class TasksService {
     private projectModel: Model<ProjectDocument>,
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
+    private taskHistoryService: TaskHistoryService,
   ) {}
 
   async create(createTaskDto: CreateTaskDto, adminId: string) {
@@ -89,6 +91,15 @@ export class TasksService {
     userId: string,
     updateTaskStatusDto: UpdateTaskStatusDto,
   ) {
+    const oldTask = await this.taskModel.findOne({
+      _id: taskId,
+      assignedTo: userId,
+    });
+
+    if (!oldTask) {
+      throw new NotFoundException('Task not found');
+    }
+
     const task = await this.taskModel.findOneAndUpdate(
       {
         _id: taskId,
@@ -104,6 +115,15 @@ export class TasksService {
 
     if (!task) {
       throw new NotFoundException('Task not found');
+    }
+
+    if (oldTask.status !== updateTaskStatusDto.status) {
+      await this.taskHistoryService.create(
+        taskId,
+        userId,
+        oldTask.status,
+        updateTaskStatusDto.status,
+      );
     }
 
     this.logger.log(

@@ -3,6 +3,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { Project } from '../projects/projects.schema';
+import { TaskHistoryService } from '../task-history/task-history.service';
 import { User } from '../users/users.schema';
 import { Task, TaskStatus } from './tasks.schema';
 import { TasksService } from './tasks.service';
@@ -18,6 +19,7 @@ describe('TasksService', () => {
   const taskModel = {
     create: jest.fn(),
     find: jest.fn(),
+    findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
   };
   const projectModel = {
@@ -25,6 +27,9 @@ describe('TasksService', () => {
   };
   const userModel = {
     findById: jest.fn(),
+  };
+  const taskHistoryService = {
+    create: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -42,6 +47,10 @@ describe('TasksService', () => {
         {
           provide: getModelToken(User.name),
           useValue: userModel,
+        },
+        {
+          provide: TaskHistoryService,
+          useValue: taskHistoryService,
         },
       ],
     }).compile();
@@ -159,7 +168,12 @@ describe('TasksService', () => {
       _id: new Types.ObjectId(taskId),
       status: TaskStatus.Done,
     };
+    const oldTask = {
+      _id: new Types.ObjectId(taskId),
+      status: TaskStatus.NotStarted,
+    };
 
+    taskModel.findOne.mockResolvedValue(oldTask);
     taskModel.findOneAndUpdate.mockResolvedValue(task);
 
     const result = await service.updateMyTaskStatus(taskId, userId, {
@@ -178,6 +192,12 @@ describe('TasksService', () => {
         returnDocument: 'after',
       },
     );
+    expect(taskHistoryService.create).toHaveBeenCalledWith(
+      taskId,
+      userId,
+      TaskStatus.NotStarted,
+      TaskStatus.Done,
+    );
     expect(result).toBe(task);
   });
 
@@ -185,12 +205,13 @@ describe('TasksService', () => {
     const taskId = new Types.ObjectId().toString();
     const userId = new Types.ObjectId().toString();
 
-    taskModel.findOneAndUpdate.mockResolvedValue(null);
+    taskModel.findOne.mockResolvedValue(null);
 
     await expect(
       service.updateMyTaskStatus(taskId, userId, {
         status: TaskStatus.Done,
       }),
     ).rejects.toThrow(NotFoundException);
+    expect(taskModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });

@@ -57,9 +57,15 @@ describe('Task planner API (e2e)', () => {
   });
 
   afterEach(async () => {
+    const taskObjectIds = taskIds.map((id) => new Types.ObjectId(id));
+
+    await connection.collection('taskhistories').deleteMany({
+      $or: [{ task: { $in: taskObjectIds } }, { task: { $in: taskIds } }],
+    });
+
     await connection.collection('tasks').deleteMany({
       _id: {
-        $in: taskIds.map((id) => new Types.ObjectId(id)),
+        $in: taskObjectIds,
       },
     });
 
@@ -184,6 +190,14 @@ describe('Task planner API (e2e)', () => {
     const statusBody = statusResponse.body as TaskResponse;
 
     expect(statusBody.status).toBe('done');
+
+    const taskHistory = await connection.collection('taskhistories').findOne({
+      task: new Types.ObjectId(taskBody._id),
+    });
+
+    expect(taskHistory).not.toBeNull();
+    expect(taskHistory?.oldStatus).toBe('not_started');
+    expect(taskHistory?.newStatus).toBe('done');
 
     const filteredTasksResponse = await request(app.getHttpServer())
       .get('/tasks/my-tasks')
