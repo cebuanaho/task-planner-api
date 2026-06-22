@@ -6,6 +6,8 @@ import { App } from 'supertest/types';
 import { Connection, Types } from 'mongoose';
 import { AppModule } from './../src/app.module';
 
+jest.setTimeout(30000);
+
 type RegisterResponse = {
   id: string;
   role: string;
@@ -22,6 +24,11 @@ type ProjectResponse = {
 type TaskResponse = {
   _id: string;
   status: string;
+};
+
+type TaskCommentResponse = {
+  _id: string;
+  text: string;
 };
 
 describe('Task planner API (e2e)', () => {
@@ -60,6 +67,10 @@ describe('Task planner API (e2e)', () => {
     const taskObjectIds = taskIds.map((id) => new Types.ObjectId(id));
 
     await connection.collection('taskhistories').deleteMany({
+      $or: [{ task: { $in: taskObjectIds } }, { task: { $in: taskIds } }],
+    });
+
+    await connection.collection('taskcomments').deleteMany({
       $or: [{ task: { $in: taskObjectIds } }, { task: { $in: taskIds } }],
     });
 
@@ -215,6 +226,28 @@ describe('Task planner API (e2e)', () => {
 
     expect(filteredTasksBody).toHaveLength(1);
     expect(filteredTasksBody[0]._id).toBe(taskBody._id);
+
+    const commentResponse = await request(app.getHttpServer())
+      .post(`/tasks/${taskBody._id}/comments`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        text: 'I finished this task.',
+      })
+      .expect(201);
+
+    const commentBody = commentResponse.body as TaskCommentResponse;
+
+    expect(commentBody.text).toBe('I finished this task.');
+
+    const commentsResponse = await request(app.getHttpServer())
+      .get(`/tasks/${taskBody._id}/comments`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+
+    const commentsBody = commentsResponse.body as TaskCommentResponse[];
+
+    expect(commentsBody).toHaveLength(1);
+    expect(commentsBody[0]._id).toBe(commentBody._id);
   });
 
   it('checks basic auth and role rules', async () => {

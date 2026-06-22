@@ -15,6 +15,7 @@ import { Roles } from '../auth/roles/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
 import type { RequestWithUser } from '../auth/types/request-with-user.type';
 import { UserRole } from '../users/users.schema';
+import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TasksService } from './tasks.service';
@@ -67,5 +68,26 @@ export class TasksController {
       req.user.sub,
       updateTaskStatusDto,
     );
+  }
+
+  @Post(':id/comments')
+  @UseGuards(JwtGuard)
+  addComment(
+    @Param('id') id: string,
+    @Body() createTaskCommentDto: CreateTaskCommentDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.tasksService.addComment(
+      id,
+      req.user.sub,
+      req.user.role,
+      createTaskCommentDto,
+    );
+  }
+
+  @Get(':id/comments')
+  @UseGuards(JwtGuard)
+  findComments(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.tasksService.findComments(id, req.user.sub, req.user.role);
   }
 }

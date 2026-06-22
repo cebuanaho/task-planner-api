@@ -3,8 +3,9 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { Project } from '../projects/projects.schema';
+import { TaskCommentsService } from '../task-comments/task-comments.service';
 import { TaskHistoryService } from '../task-history/task-history.service';
-import { User } from '../users/users.schema';
+import { User, UserRole } from '../users/users.schema';
 import { Task, TaskStatus } from './tasks.schema';
 import { TasksService } from './tasks.service';
 
@@ -19,6 +20,7 @@ describe('TasksService', () => {
   const taskModel = {
     create: jest.fn(),
     find: jest.fn(),
+    findById: jest.fn(),
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
   };
@@ -30,6 +32,10 @@ describe('TasksService', () => {
   };
   const taskHistoryService = {
     create: jest.fn(),
+  };
+  const taskCommentsService = {
+    create: jest.fn(),
+    findByTask: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -47,6 +53,10 @@ describe('TasksService', () => {
         {
           provide: getModelToken(User.name),
           useValue: userModel,
+        },
+        {
+          provide: TaskCommentsService,
+          useValue: taskCommentsService,
         },
         {
           provide: TaskHistoryService,
@@ -94,6 +104,36 @@ describe('TasksService', () => {
       createdBy: adminId,
     });
     expect(result).toBe(task);
+  });
+
+  it('should add a comment to own task', async () => {
+    const taskId = new Types.ObjectId().toString();
+    const userId = new Types.ObjectId().toString();
+    const task = {
+      _id: new Types.ObjectId(taskId),
+    };
+    const comment = {
+      _id: new Types.ObjectId(),
+      text: 'Looks good',
+    };
+
+    taskModel.findOne.mockResolvedValue(task);
+    taskCommentsService.create.mockResolvedValue(comment);
+
+    const result = await service.addComment(taskId, userId, UserRole.User, {
+      text: 'Looks good',
+    });
+
+    expect(taskModel.findOne).toHaveBeenCalledWith({
+      _id: taskId,
+      assignedTo: userId,
+    });
+    expect(taskCommentsService.create).toHaveBeenCalledWith(
+      taskId,
+      userId,
+      'Looks good',
+    );
+    expect(result).toBe(comment);
   });
 
   it('should throw not found when project does not exist', async () => {

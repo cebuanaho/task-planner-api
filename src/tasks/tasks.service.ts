@@ -2,8 +2,10 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Project, ProjectDocument } from '../projects/projects.schema';
+import { TaskCommentsService } from '../task-comments/task-comments.service';
 import { TaskHistoryService } from '../task-history/task-history.service';
-import { User, UserDocument } from '../users/users.schema';
+import { User, UserDocument, UserRole } from '../users/users.schema';
+import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { Task, TaskDocument, TaskStatus } from './tasks.schema';
@@ -25,6 +27,7 @@ export class TasksService {
     private projectModel: Model<ProjectDocument>,
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
+    private taskCommentsService: TaskCommentsService,
     private taskHistoryService: TaskHistoryService,
   ) {}
 
@@ -50,6 +53,46 @@ export class TasksService {
     this.logger.log(`Task created: ${task._id.toString()}`);
 
     return task;
+  }
+
+  private findTaskForUser(taskId: string, userId: string, role: UserRole) {
+    if (role === UserRole.Admin) {
+      return this.taskModel.findById(taskId);
+    }
+
+    return this.taskModel.findOne({
+      _id: taskId,
+      assignedTo: userId,
+    });
+  }
+
+  async addComment(
+    taskId: string,
+    userId: string,
+    role: UserRole,
+    createTaskCommentDto: CreateTaskCommentDto,
+  ) {
+    const task = await this.findTaskForUser(taskId, userId, role);
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return this.taskCommentsService.create(
+      taskId,
+      userId,
+      createTaskCommentDto.text,
+    );
+  }
+
+  async findComments(taskId: string, userId: string, role: UserRole) {
+    const task = await this.findTaskForUser(taskId, userId, role);
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return this.taskCommentsService.findByTask(taskId);
   }
 
   findMyTasks(userId: string, limit = 10, skip = 0, filters: TaskFilters = {}) {
