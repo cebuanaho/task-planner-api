@@ -17,6 +17,9 @@ export class Task {
   @Prop()
   description: string;
 
+  @Prop()
+  deadline: Date;
+
   @Prop({
     required: true,
     enum: TaskStatus,

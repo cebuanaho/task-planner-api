@@ -5,7 +5,13 @@ import { Project, ProjectDocument } from '../projects/projects.schema';
 import { User, UserDocument } from '../users/users.schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
-import { Task, TaskDocument } from './tasks.schema';
+import { Task, TaskDocument, TaskStatus } from './tasks.schema';
+
+type TaskFilters = {
+  status?: TaskStatus;
+  search?: string;
+  deadlineInDays?: number;
+};
 
 @Injectable()
 export class TasksService {
@@ -44,9 +50,35 @@ export class TasksService {
     return task;
   }
 
-  findMyTasks(userId: string, limit = 10, skip = 0) {
+  findMyTasks(userId: string, limit = 10, skip = 0, filters: TaskFilters = {}) {
+    const query: Record<string, unknown> = {
+      assignedTo: userId,
+    };
+
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    if (filters.search) {
+      query.title = {
+        $regex: filters.search,
+        $options: 'i',
+      };
+    }
+
+    if (filters.deadlineInDays) {
+      const today = new Date();
+      const endDate = new Date();
+      endDate.setDate(today.getDate() + filters.deadlineInDays);
+
+      query.deadline = {
+        $gte: today,
+        $lte: endDate,
+      };
+    }
+
     return this.taskModel
-      .find({ assignedTo: userId })
+      .find(query)
       .populate('project', 'name')
       .limit(limit)
       .skip(skip);

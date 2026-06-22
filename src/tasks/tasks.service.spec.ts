@@ -131,11 +131,22 @@ describe('TasksService', () => {
 
     taskModel.find.mockReturnValue(taskQuery);
 
-    service.findMyTasks(userId, 5, 10);
-
-    expect(taskModel.find).toHaveBeenCalledWith({
-      assignedTo: userId,
+    service.findMyTasks(userId, 5, 10, {
+      status: TaskStatus.InProgress,
+      search: 'api',
+      deadlineInDays: 3,
     });
+
+    expect(taskModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assignedTo: userId,
+        status: TaskStatus.InProgress,
+        title: {
+          $regex: 'api',
+          $options: 'i',
+        },
+      }),
+    );
     expect(taskQuery.populate).toHaveBeenCalledWith('project', 'name');
     expect(taskQuery.limit).toHaveBeenCalledWith(5);
     expect(taskQuery.skip).toHaveBeenCalledWith(10);

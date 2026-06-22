@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsMongoId, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class CreateTaskDto {
   @ApiProperty({ example: 'Prepare API' })
@@ -10,6 +10,11 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ example: '2026-06-30' })
+  @IsOptional()
+  @IsDateString()
+  deadline?: string;
 
   @ApiProperty({ example: '665f1e6b8d3b2a0012345678' })
   @IsMongoId()

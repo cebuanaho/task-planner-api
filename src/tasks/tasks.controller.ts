@@ -18,6 +18,7 @@ import { UserRole } from '../users/users.schema';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TasksService } from './tasks.service';
+import { TaskStatus } from './tasks.schema';
 
 @ApiTags('tasks')
 @ApiBearerAuth()
@@ -38,11 +39,19 @@ export class TasksController {
     @Req() req: RequestWithUser,
     @Query('limit') limit = '10',
     @Query('skip') skip = '0',
+    @Query('status') status?: TaskStatus,
+    @Query('search') search?: string,
+    @Query('deadlineInDays') deadlineInDays?: string,
   ) {
     return this.tasksService.findMyTasks(
       req.user.sub,
       Number(limit),
       Number(skip),
+      {
+        status,
+        search,
+        deadlineInDays: deadlineInDays ? Number(deadlineInDays) : undefined,
+      },
     );
   }
 
