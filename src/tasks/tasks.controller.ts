@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -33,8 +34,16 @@ export class TasksController {
 
   @Get('my-tasks')
   @UseGuards(JwtGuard)
-  findMyTasks(@Req() req: RequestWithUser) {
-    return this.tasksService.findMyTasks(req.user.sub);
+  findMyTasks(
+    @Req() req: RequestWithUser,
+    @Query('limit') limit = '10',
+    @Query('skip') skip = '0',
+  ) {
+    return this.tasksService.findMyTasks(
+      req.user.sub,
+      Number(limit),
+      Number(skip),
+    );
   }
 
   @Patch(':id/status')

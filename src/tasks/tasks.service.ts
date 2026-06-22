@@ -21,13 +21,14 @@ export class TasksService {
   ) {}
 
   async create(createTaskDto: CreateTaskDto, adminId: string) {
-    const project = await this.projectModel.findById(createTaskDto.project);
+    const [project, user] = await Promise.all([
+      this.projectModel.findById(createTaskDto.project),
+      this.userModel.findById(createTaskDto.assignedTo),
+    ]);
 
     if (!project) {
       throw new NotFoundException('Project not found');
     }
-
-    const user = await this.userModel.findById(createTaskDto.assignedTo);
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -43,8 +44,12 @@ export class TasksService {
     return task;
   }
 
-  findMyTasks(userId: string) {
-    return this.taskModel.find({ assignedTo: userId });
+  findMyTasks(userId: string, limit = 10, skip = 0) {
+    return this.taskModel
+      .find({ assignedTo: userId })
+      .populate('project', 'name')
+      .limit(limit)
+      .skip(skip);
   }
 
   async updateMyTaskStatus(

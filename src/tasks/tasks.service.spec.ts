@@ -9,6 +9,11 @@ import { TasksService } from './tasks.service';
 
 describe('TasksService', () => {
   let service: TasksService;
+  const taskQuery = {
+    populate: jest.fn(),
+    limit: jest.fn(),
+    skip: jest.fn(),
+  };
 
   const taskModel = {
     create: jest.fn(),
@@ -44,6 +49,10 @@ describe('TasksService', () => {
     service = module.get<TasksService>(TasksService);
 
     jest.clearAllMocks();
+
+    taskQuery.populate.mockReturnValue(taskQuery);
+    taskQuery.limit.mockReturnValue(taskQuery);
+    taskQuery.skip.mockReturnValue(taskQuery);
   });
 
   it('should create a task', async () => {
@@ -120,11 +129,16 @@ describe('TasksService', () => {
   it('should find tasks assigned to user', () => {
     const userId = new Types.ObjectId().toString();
 
-    service.findMyTasks(userId);
+    taskModel.find.mockReturnValue(taskQuery);
+
+    service.findMyTasks(userId, 5, 10);
 
     expect(taskModel.find).toHaveBeenCalledWith({
       assignedTo: userId,
     });
+    expect(taskQuery.populate).toHaveBeenCalledWith('project', 'name');
+    expect(taskQuery.limit).toHaveBeenCalledWith(5);
+    expect(taskQuery.skip).toHaveBeenCalledWith(10);
   });
 
   it('should update own task status', async () => {
