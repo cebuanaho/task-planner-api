@@ -9,7 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
-import { MailModule } from './mail/mail.module';
+import { TaskRemindersModule } from './task-reminders/task-reminders.module';
 
 @Module({
   imports: [
@@ -39,7 +39,7 @@ import { MailModule } from './mail/mail.module';
     UsersModule,
     ProjectsModule,
     TasksModule,
-    MailModule,
+    TaskRemindersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
