@@ -35,6 +35,7 @@ MongoDB tarafında da ilk defa user, project ve task arasında ilişki kurmayı 
 - Tasklara yorum eklenebilir
 - Tasklara dosya eklenebilir
 - Task status değişince geçmiş kaydı tutulur
+- Deadline yaklaşan veya geçmiş tasklar için her sabah hatırlatma kontrolü çalışır
 
 Admin kullanıcıyı test edebilmek için `role` alanını register sırasında gönderebiliyorum. Gerçek bir projede bunu bu şekilde açık bırakmak doğru olmaz, ama bu taskta admin/user ayrımını test etmek için basit tuttum.
 
@@ -54,6 +55,8 @@ Task durumları:
 - class-validator
 - Swagger
 - Docker Compose
+- @nestjs/schedule
+- nodemailer
 
 ## Kurulum
 
@@ -68,7 +71,16 @@ npm install
 ```env
 MONGODB_URI=mongodb://localhost:27017/task-planner-api
 JWT_SECRET=your_jwt_secret
+PORT=3000
+
+MAIL_HOST=
+MAIL_PORT=587
+MAIL_USER=
+MAIL_PASS=
+MAIL_FROM=task-planner@mail.com
 ```
+
+Mail bilgileri opsiyonel bıraktım. Lokal geliştirmede SMTP bilgisi yoksa uygulama hata vermiyor, mail göndermek yerine log basıyor.
 
 Projeyi çalıştırmak için:
 
@@ -232,6 +244,7 @@ Gelen geri bildirimlerden sonra projeye birkaç ekleme yaptım:
 - Task listesinde project id yerine project adını da döndürmek için populate kullandım.
 - Task status değişikliklerini ayrı history kaydı olarak tutmaya başladım.
 - Task yorumları ve dosya ekleme tarafını ekledim.
+- Son olarak mail servisi ve `@nestjs/schedule` ile sabah 09:00'da çalışan hatırlatma görevini ekledim. Bu dosyaları da Nest CLI ile oluşturdum, sonra içlerini projeye göre doldurdum.
 
 MongoDB lokalde kurulu değilse şu komutla çalıştırılabilir:
 
