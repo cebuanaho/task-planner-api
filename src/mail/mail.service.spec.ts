@@ -1,0 +1,37 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { MailService } from './mail.service';
+
+describe('MailService', () => {
+  let service: MailService;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        MailService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<MailService>(MailService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  it('should not fail when mail settings are empty', async () => {
+    await expect(
+      service.sendTaskReminder('user@mail.com', [
+        {
+          title: 'Finish API',
+        },
+      ]),
+    ).resolves.toBeUndefined();
+  });
+});
