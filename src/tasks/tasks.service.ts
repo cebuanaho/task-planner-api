@@ -1,7 +1,13 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Project, ProjectDocument } from '../projects/projects.schema';
+import { TaskAttachmentsService } from '../task-attachments/task-attachments.service';
 import { TaskCommentsService } from '../task-comments/task-comments.service';
 import { TaskHistoryService } from '../task-history/task-history.service';
 import { User, UserDocument, UserRole } from '../users/users.schema';
@@ -16,6 +22,14 @@ type TaskFilters = {
   deadlineInDays?: number;
 };
 
+type UploadedTaskFile = {
+  originalname: string;
+  filename: string;
+  path: string;
+  mimetype: string;
+  size: number;
+};
+
 @Injectable()
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
@@ -27,6 +41,7 @@ export class TasksService {
     private projectModel: Model<ProjectDocument>,
     @InjectModel(User.name)
     private userModel: Model<UserDocument>,
+    private taskAttachmentsService: TaskAttachmentsService,
     private taskCommentsService: TaskCommentsService,
     private taskHistoryService: TaskHistoryService,
   ) {}
@@ -93,6 +108,41 @@ export class TasksService {
     }
 
     return this.taskCommentsService.findByTask(taskId);
+  }
+
+  async addAttachment(
+    taskId: string,
+    userId: string,
+    role: UserRole,
+    file?: UploadedTaskFile,
+  ) {
+    const task = await this.findTaskForUser(taskId, userId, role);
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+
+    return this.taskAttachmentsService.create(taskId, userId, {
+      originalName: file.originalname,
+      filename: file.filename,
+      path: file.path,
+      mimetype: file.mimetype,
+      size: file.size,
+    });
+  }
+
+  async findAttachments(taskId: string, userId: string, role: UserRole) {
+    const task = await this.findTaskForUser(taskId, userId, role);
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return this.taskAttachmentsService.findByTask(taskId);
   }
 
   findMyTasks(userId: string, limit = 10, skip = 0, filters: TaskFilters = {}) {

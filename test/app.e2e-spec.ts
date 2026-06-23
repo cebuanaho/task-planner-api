@@ -4,6 +4,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { Connection, Types } from 'mongoose';
+import { existsSync, unlinkSync } from 'fs';
 import { AppModule } from './../src/app.module';
 
 jest.setTimeout(30000);
@@ -31,12 +32,19 @@ type TaskCommentResponse = {
   text: string;
 };
 
+type TaskAttachmentResponse = {
+  _id: string;
+  originalName: string;
+  path: string;
+};
+
 describe('Task planner API (e2e)', () => {
   let app: INestApplication<App>;
   let connection: Connection;
   let userIds: string[];
   let projectIds: string[];
   let taskIds: string[];
+  let uploadedFilePaths: string[];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -61,6 +69,7 @@ describe('Task planner API (e2e)', () => {
     userIds = [];
     projectIds = [];
     taskIds = [];
+    uploadedFilePaths = [];
   });
 
   afterEach(async () => {
@@ -72,6 +81,16 @@ describe('Task planner API (e2e)', () => {
 
     await connection.collection('taskcomments').deleteMany({
       $or: [{ task: { $in: taskObjectIds } }, { task: { $in: taskIds } }],
+    });
+
+    await connection.collection('taskattachments').deleteMany({
+      $or: [{ task: { $in: taskObjectIds } }, { task: { $in: taskIds } }],
+    });
+
+    uploadedFilePaths.forEach((filePath) => {
+      if (existsSync(filePath)) {
+        unlinkSync(filePath);
+      }
     });
 
     await connection.collection('tasks').deleteMany({
@@ -248,6 +267,31 @@ describe('Task planner API (e2e)', () => {
 
     expect(commentsBody).toHaveLength(1);
     expect(commentsBody[0]._id).toBe(commentBody._id);
+
+    const attachmentResponse = await request(app.getHttpServer())
+      .post(`/tasks/${taskBody._id}/attachments`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .attach('file', Buffer.from('test pdf'), {
+        filename: 'test.pdf',
+        contentType: 'application/pdf',
+      })
+      .expect(201);
+
+    const attachmentBody = attachmentResponse.body as TaskAttachmentResponse;
+    uploadedFilePaths.push(attachmentBody.path);
+
+    expect(attachmentBody.originalName).toBe('test.pdf');
+
+    const attachmentsResponse = await request(app.getHttpServer())
+      .get(`/tasks/${taskBody._id}/attachments`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+
+    const attachmentsBody =
+      attachmentsResponse.body as TaskAttachmentResponse[];
+
+    expect(attachmentsBody).toHaveLength(1);
+    expect(attachmentsBody[0]._id).toBe(attachmentBody._id);
   });
 
   it('checks basic auth and role rules', async () => {

@@ -3,6 +3,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { Project } from '../projects/projects.schema';
+import { TaskAttachmentsService } from '../task-attachments/task-attachments.service';
 import { TaskCommentsService } from '../task-comments/task-comments.service';
 import { TaskHistoryService } from '../task-history/task-history.service';
 import { User, UserRole } from '../users/users.schema';
@@ -37,6 +38,10 @@ describe('TasksService', () => {
     create: jest.fn(),
     findByTask: jest.fn(),
   };
+  const taskAttachmentsService = {
+    create: jest.fn(),
+    findByTask: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -57,6 +62,10 @@ describe('TasksService', () => {
         {
           provide: TaskCommentsService,
           useValue: taskCommentsService,
+        },
+        {
+          provide: TaskAttachmentsService,
+          useValue: taskAttachmentsService,
         },
         {
           provide: TaskHistoryService,
@@ -134,6 +143,42 @@ describe('TasksService', () => {
       'Looks good',
     );
     expect(result).toBe(comment);
+  });
+
+  it('should add an attachment to own task', async () => {
+    const taskId = new Types.ObjectId().toString();
+    const userId = new Types.ObjectId().toString();
+    const task = {
+      _id: new Types.ObjectId(taskId),
+    };
+    const attachment = {
+      _id: new Types.ObjectId(),
+      originalName: 'test.pdf',
+    };
+
+    taskModel.findOne.mockResolvedValue(task);
+    taskAttachmentsService.create.mockResolvedValue(attachment);
+
+    const result = await service.addAttachment(taskId, userId, UserRole.User, {
+      originalname: 'test.pdf',
+      filename: 'test-file.pdf',
+      path: 'uploads/test-file.pdf',
+      mimetype: 'application/pdf',
+      size: 100,
+    });
+
+    expect(taskModel.findOne).toHaveBeenCalledWith({
+      _id: taskId,
+      assignedTo: userId,
+    });
+    expect(taskAttachmentsService.create).toHaveBeenCalledWith(taskId, userId, {
+      originalName: 'test.pdf',
+      filename: 'test-file.pdf',
+      path: 'uploads/test-file.pdf',
+      mimetype: 'application/pdf',
+      size: 100,
+    });
+    expect(result).toBe(attachment);
   });
 
   it('should throw not found when project does not exist', async () => {
