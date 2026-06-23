@@ -270,6 +270,26 @@ describe('TasksService', () => {
     expect(taskQuery.skip).toHaveBeenCalledWith(10);
   });
 
+  it('should find tasks for reminder', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-01-01'));
+    taskModel.find.mockReturnValue(taskQuery);
+
+    service.findTasksForReminder(2);
+
+    expect(taskModel.find).toHaveBeenCalledWith({
+      status: {
+        $ne: TaskStatus.Done,
+      },
+      deadline: {
+        $lte: new Date('2026-01-03'),
+      },
+    });
+    expect(taskQuery.populate).toHaveBeenCalledWith('assignedTo', 'email');
+    expect(taskQuery.populate).toHaveBeenCalledWith('project', 'name');
+
+    jest.useRealTimers();
+  });
+
   it('should update own task status', async () => {
     const taskId = new Types.ObjectId().toString();
     const userId = new Types.ObjectId().toString();

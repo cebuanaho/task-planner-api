@@ -192,6 +192,23 @@ export class TasksService {
       .skip(skip);
   }
 
+  findTasksForReminder(days = 1) {
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + days);
+
+    return this.taskModel
+      .find({
+        status: {
+          $ne: TaskStatus.Done,
+        },
+        deadline: {
+          $lte: endDate,
+        },
+      })
+      .populate('assignedTo', 'email')
+      .populate('project', 'name');
+  }
+
   async updateMyTaskStatus(
     taskId: string,
     userId: string,
