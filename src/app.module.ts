@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -34,6 +35,7 @@ import { MailModule } from './mail/mail.module';
     }),
 
     AuthModule,
+    ScheduleModule.forRoot(),
     UsersModule,
     ProjectsModule,
     TasksModule,
