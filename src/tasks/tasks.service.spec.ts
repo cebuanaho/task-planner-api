@@ -181,6 +181,30 @@ describe('TasksService', () => {
     expect(result).toBe(attachment);
   });
 
+  it('should find own task detail', async () => {
+    const taskId = new Types.ObjectId().toString();
+    const userId = new Types.ObjectId().toString();
+    const task = {
+      _id: new Types.ObjectId(taskId),
+      populate: jest.fn(),
+    };
+
+    task.populate.mockResolvedValue(task);
+    taskModel.findOne.mockResolvedValue(task);
+
+    const result = await service.findOne(taskId, userId, UserRole.User);
+
+    expect(taskModel.findOne).toHaveBeenCalledWith({
+      _id: taskId,
+      assignedTo: userId,
+    });
+    expect(task.populate).toHaveBeenCalledWith([
+      { path: 'project', select: 'name' },
+      { path: 'assignedTo', select: 'email' },
+    ]);
+    expect(result).toBe(task);
+  });
+
   it('should throw not found when project does not exist', async () => {
     const adminId = new Types.ObjectId().toString();
     const projectId = new Types.ObjectId().toString();

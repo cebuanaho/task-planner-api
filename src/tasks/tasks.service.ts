@@ -145,6 +145,19 @@ export class TasksService {
     return this.taskAttachmentsService.findByTask(taskId);
   }
 
+  async findOne(taskId: string, userId: string, role: UserRole) {
+    const task = await this.findTaskForUser(taskId, userId, role);
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return task.populate([
+      { path: 'project', select: 'name' },
+      { path: 'assignedTo', select: 'email' },
+    ]);
+  }
+
   findMyTasks(userId: string, limit = 10, skip = 0, filters: TaskFilters = {}) {
     const query: Record<string, unknown> = {
       assignedTo: userId,

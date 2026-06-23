@@ -164,4 +164,10 @@ export class TasksController {
   findAttachments(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.tasksService.findAttachments(id, req.user.sub, req.user.role);
   }
+
+  @Get(':id')
+  @UseGuards(JwtGuard)
+  findOne(@Param('id') id: string, @Req() req: RequestWithUser) {
+    return this.tasksService.findOne(id, req.user.sub, req.user.role);
+  }
 }

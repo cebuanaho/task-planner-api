@@ -27,6 +27,10 @@ type TaskResponse = {
   status: string;
 };
 
+type TaskDetailResponse = TaskResponse & {
+  title: string;
+};
+
 type TaskCommentResponse = {
   _id: string;
   text: string;
@@ -292,6 +296,16 @@ describe('Task planner API (e2e)', () => {
 
     expect(attachmentsBody).toHaveLength(1);
     expect(attachmentsBody[0]._id).toBe(attachmentBody._id);
+
+    const taskDetailResponse = await request(app.getHttpServer())
+      .get(`/tasks/${taskBody._id}`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(200);
+
+    const taskDetailBody = taskDetailResponse.body as TaskDetailResponse;
+
+    expect(taskDetailBody._id).toBe(taskBody._id);
+    expect(taskDetailBody.title).toBe('Test Task');
   });
 
   it('checks basic auth and role rules', async () => {
@@ -437,6 +451,11 @@ describe('Task planner API (e2e)', () => {
       .send({
         status: 'done',
       })
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .get(`/tasks/${taskBody._id}`)
+      .set('Authorization', `Bearer ${otherUserToken}`)
       .expect(404);
 
     await request(app.getHttpServer())
