@@ -8,7 +8,6 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
-import { TaskAttachmentsModule } from './task-attachments/task-attachments.module';
 
 @Module({
   imports: [
@@ -32,7 +31,6 @@ import { TaskAttachmentsModule } from './task-attachments/task-attachments.modul
     UsersModule,
     ProjectsModule,
     TasksModule,
-    TaskAttachmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

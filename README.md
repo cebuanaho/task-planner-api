@@ -30,6 +30,11 @@ MongoDB tarafında da ilk defa user, project ve task arasında ilişki kurmayı 
 - Admin task oluşturup user'a atayabilir
 - User sadece kendisine atanmış taskları görebilir
 - User sadece kendi taskının durumunu değiştirebilir
+- Task listesinde status, başlık ve deadline'a göre filtreleme yapılabilir
+- Task detayına bakılabilir
+- Tasklara yorum eklenebilir
+- Tasklara dosya eklenebilir
+- Task status değişince geçmiş kaydı tutulur
 
 Admin kullanıcıyı test edebilmek için `role` alanını register sırasında gönderebiliyorum. Gerçek bir projede bunu bu şekilde açık bırakmak doğru olmaz, ama bu taskta admin/user ayrımını test etmek için basit tuttum.
 
@@ -47,6 +52,8 @@ Task durumları:
 - JWT
 - bcrypt
 - class-validator
+- Swagger
+- Docker Compose
 
 ## Kurulum
 
@@ -149,6 +156,39 @@ curl -X PATCH http://localhost:3000/tasks/TASK_ID/status \
   }'
 ```
 
+User ile task detayını görme:
+
+```bash
+curl http://localhost:3000/tasks/TASK_ID \
+  -H "Authorization: Bearer USER_TOKEN"
+```
+
+User ile tasklara filtre vererek bakma:
+
+```bash
+curl "http://localhost:3000/tasks/my-tasks?status=done&search=api&limit=5&skip=0" \
+  -H "Authorization: Bearer USER_TOKEN"
+```
+
+Taska yorum ekleme:
+
+```bash
+curl -X POST http://localhost:3000/tasks/TASK_ID/comments \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer USER_TOKEN" \
+  -d '{
+    "text": "Bu task tamamlandı."
+  }'
+```
+
+Taska dosya ekleme:
+
+```bash
+curl -X POST http://localhost:3000/tasks/TASK_ID/attachments \
+  -H "Authorization: Bearer USER_TOKEN" \
+  -F "file=@./document.pdf"
+```
+
 ## Test
 
 Unit test:
@@ -171,6 +211,9 @@ E2E testte ana akışı denedim:
 - task oluşturma
 - user'ın kendi tasklarını görmesi
 - user'ın task status güncellemesi
+- task yorumları
+- task dosya ekleme
+- task detayına erişme
 
 ## Güncelleme notları
 
@@ -183,6 +226,12 @@ Gelen geri bildirimlerden sonra projeye birkaç ekleme yaptım:
 - Task oluştururken project ve assigned user gerçekten var mı diye kontrol ekledim.
 - Unit test tarafında task create, listeleme, status update ve bazı hata durumlarını denedim.
 - E2E testte auth, role kontrolü, task sahipliği ve yanlış status gibi birkaç senaryoyu da ekledim.
+- Env değerleri eksikse proje başlarken hata verecek şekilde kontrol ekledim.
+- Şifre hashleme işlemini user schema tarafındaki `pre('save')` hook'una taşıdım.
+- Task listeleme tarafına `limit`, `skip`, `status`, `search` ve `deadlineInDays` query parametrelerini ekledim.
+- Task listesinde project id yerine project adını da döndürmek için populate kullandım.
+- Task status değişikliklerini ayrı history kaydı olarak tutmaya başladım.
+- Task yorumları ve dosya ekleme tarafını ekledim.
 
 MongoDB lokalde kurulu değilse şu komutla çalıştırılabilir:
 
