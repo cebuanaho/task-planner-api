@@ -24,6 +24,7 @@ import { TaskRemindersModule } from './task-reminders/task-reminders.module';
         MAIL_USER: Joi.string().optional(),
         MAIL_PASS: Joi.string().optional(),
         MAIL_FROM: Joi.string().optional(),
+        ADMIN_BOOTSTRAP_KEY: Joi.string().optional(),
       }),
     }),
 

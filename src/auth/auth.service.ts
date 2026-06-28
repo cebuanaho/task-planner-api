@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { BootstrapAdminDto } from './dto/bootstrap-admin.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UsersService } from '../users/users.service';
@@ -32,6 +34,33 @@ export class AuthService {
     );
 
     this.logger.log(`User registered: ${user.email}`);
+
+    return {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    };
+  }
+
+  async bootstrapAdmin(bootstrapAdminDto: BootstrapAdminDto) {
+    const bootstrapKey = process.env.ADMIN_BOOTSTRAP_KEY;
+
+    if (!bootstrapKey || bootstrapAdminDto.bootstrapKey !== bootstrapKey) {
+      throw new ForbiddenException('Invalid bootstrap key');
+    }
+
+    const adminExists = await this.usersService.hasAdmin();
+
+    if (adminExists) {
+      throw new BadRequestException('Admin already exists');
+    }
+
+    const user = await this.usersService.createAdmin(
+      bootstrapAdminDto.email,
+      bootstrapAdminDto.password,
+    );
+
+    this.logger.log(`Admin bootstrap created: ${user.email}`);
 
     return {
       id: user._id,

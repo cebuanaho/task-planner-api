@@ -20,6 +20,22 @@ export class UsersService {
     return user;
   }
 
+  async createAdmin(email: string, password: string) {
+    const user = await this.userModel.create({
+      email,
+      password,
+      role: UserRole.Admin,
+    });
+
+    return user;
+  }
+
+  async hasAdmin() {
+    const admin = await this.userModel.exists({ role: UserRole.Admin });
+
+    return !!admin;
+  }
+
   async findByEmail(email: string) {
     const user = await this.userModel.findOne({ email });
 
