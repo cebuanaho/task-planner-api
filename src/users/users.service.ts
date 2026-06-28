@@ -10,11 +10,11 @@ export class UsersService {
     private userModel: Model<UserDocument>,
   ) {}
 
-  async create(email: string, password: string, role?: UserRole) {
+  async create(email: string, password: string) {
     const user = await this.userModel.create({
       email,
       password,
-      role,
+      role: UserRole.User,
     });
 
     return user;
