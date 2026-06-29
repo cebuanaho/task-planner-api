@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { isValidObjectId, Model } from 'mongoose';
 import { Project, ProjectDocument } from '../projects/projects.schema';
 import { TaskAttachmentsService } from '../task-attachments/task-attachments.service';
 import { TaskCommentsService } from '../task-comments/task-comments.service';
@@ -20,6 +20,9 @@ type TaskFilters = {
   status?: TaskStatus;
   search?: string;
   deadlineInDays?: number;
+  project?: string;
+  limit?: number;
+  skip?: number;
 };
 
 type UploadedTaskFile = {
@@ -110,6 +113,50 @@ export class TasksService {
     return this.taskCommentsService.findByTask(taskId);
   }
 
+  findAll(filters: TaskFilters = {}) {
+    const query: Record<string, unknown> = {};
+    const limit = this.toPositiveInteger(filters.limit, 20);
+    const skip = this.toNonNegativeInteger(filters.skip, 0);
+
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    if (filters.search) {
+      query.title = {
+        $regex: filters.search,
+        $options: 'i',
+      };
+    }
+
+    if (filters.project) {
+      if (!isValidObjectId(filters.project)) {
+        throw new BadRequestException('Invalid project');
+      }
+
+      query.project = filters.project;
+    }
+
+    if (filters.deadlineInDays) {
+      const today = new Date();
+      const endDate = new Date();
+      endDate.setDate(today.getDate() + filters.deadlineInDays);
+
+      query.deadline = {
+        $gte: today,
+        $lte: endDate,
+      };
+    }
+
+    return this.taskModel
+      .find(query)
+      .populate('project', 'name')
+      .populate('assignedTo', 'email')
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 });
+  }
+
   async addAttachment(
     taskId: string,
     userId: string,
@@ -158,7 +205,15 @@ export class TasksService {
     ]);
   }
 
-  findMyTasks(userId: string, limit = 10, skip = 0, filters: TaskFilters = {}) {
+  findMyTasks(
+    userId: string,
+    limit = 10,
+    skip = 0,
+    filters: Omit<TaskFilters, 'limit' | 'skip' | 'project'> = {},
+  ) {
+    const safeLimit = this.toPositiveInteger(limit, 10);
+    const safeSkip = this.toNonNegativeInteger(skip, 0);
+
     const query: Record<string, unknown> = {
       assignedTo: userId,
     };
@@ -188,8 +243,24 @@ export class TasksService {
     return this.taskModel
       .find(query)
       .populate('project', 'name')
-      .limit(limit)
-      .skip(skip);
+      .limit(safeLimit)
+      .skip(safeSkip);
+  }
+
+  private toPositiveInteger(value: number | undefined, fallback: number) {
+    if (!Number.isInteger(value) || value <= 0) {
+      return fallback;
+    }
+
+    return value;
+  }
+
+  private toNonNegativeInteger(value: number | undefined, fallback: number) {
+    if (!Number.isInteger(value) || value < 0) {
+      return fallback;
+    }
+
+    return value;
   }
 
   findTasksForReminder(days = 1) {

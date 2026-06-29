@@ -76,6 +76,27 @@ export class TasksController {
     return this.tasksService.create(createTaskDto, req.user.sub);
   }
 
+  @Get()
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.Admin)
+  findAll(
+    @Query('limit') limit = '20',
+    @Query('skip') skip = '0',
+    @Query('status') status?: TaskStatus,
+    @Query('search') search?: string,
+    @Query('project') project?: string,
+    @Query('deadlineInDays') deadlineInDays?: string,
+  ) {
+    return this.tasksService.findAll({
+      limit: Number(limit),
+      skip: Number(skip),
+      status,
+      search,
+      project,
+      deadlineInDays: deadlineInDays ? Number(deadlineInDays) : undefined,
+    });
+  }
+
   @Get('my-tasks')
   @UseGuards(JwtGuard)
   findMyTasks(
