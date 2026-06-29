@@ -1,5 +1,6 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { NotFoundException } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt/jwt.guard';
 import { Roles } from '../auth/roles/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
@@ -22,5 +23,23 @@ export class ProjectsController {
     @Req() req: RequestWithUser,
   ) {
     return this.projectsService.create(createProjectDto, req.user.sub);
+  }
+
+  @Get()
+  @UseGuards(JwtGuard)
+  findAll() {
+    return this.projectsService.findAll();
+  }
+
+  @Get(':id')
+  @UseGuards(JwtGuard)
+  async findById(@Param('id') id: string) {
+    const project = await this.projectsService.findById(id);
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    return project;
   }
 }
