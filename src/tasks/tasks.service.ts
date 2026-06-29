@@ -13,6 +13,7 @@ import { TaskHistoryService } from '../task-history/task-history.service';
 import { User, UserDocument, UserRole } from '../users/users.schema';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { Task, TaskDocument, TaskStatus } from './tasks.schema';
 
@@ -323,6 +324,92 @@ export class TasksService {
     this.logger.log(
       `Task status updated: ${task._id.toString()} - ${task.status}`,
     );
+
+    return task;
+  }
+
+  async updateAdminTask(
+    taskId: string,
+    adminId: string,
+    updateTaskDto: UpdateTaskDto,
+  ) {
+    const hasNoPayload =
+      !updateTaskDto.title &&
+      !updateTaskDto.description &&
+      !updateTaskDto.deadline &&
+      !updateTaskDto.project &&
+      !updateTaskDto.assignedTo &&
+      !updateTaskDto.status;
+
+    if (hasNoPayload) {
+      throw new BadRequestException('At least one field is required');
+    }
+
+    const oldTask = await this.taskModel.findById(taskId);
+
+    if (!oldTask) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (updateTaskDto.project && !isValidObjectId(updateTaskDto.project)) {
+      throw new BadRequestException('Invalid project');
+    }
+
+    if (updateTaskDto.assignedTo && !isValidObjectId(updateTaskDto.assignedTo)) {
+      throw new BadRequestException('Invalid user');
+    }
+
+    if (updateTaskDto.project) {
+      const projectExists = await this.projectModel.findById(updateTaskDto.project);
+
+      if (!projectExists) {
+        throw new NotFoundException('Project not found');
+      }
+    }
+
+    if (updateTaskDto.assignedTo) {
+      const userExists = await this.userModel.findById(updateTaskDto.assignedTo);
+
+      if (!userExists) {
+        throw new NotFoundException('User not found');
+      }
+    }
+
+    const task = await this.taskModel.findByIdAndUpdate(
+      taskId,
+      {
+        $set: {
+          ...(updateTaskDto.title ? { title: updateTaskDto.title } : {}),
+          ...(updateTaskDto.description
+            ? { description: updateTaskDto.description }
+            : {}),
+          ...(updateTaskDto.deadline
+            ? { deadline: new Date(updateTaskDto.deadline) }
+            : {}),
+          ...(updateTaskDto.project ? { project: updateTaskDto.project } : {}),
+          ...(updateTaskDto.assignedTo
+            ? { assignedTo: updateTaskDto.assignedTo }
+            : {}),
+          ...(updateTaskDto.status ? { status: updateTaskDto.status } : {}),
+        },
+      },
+      {
+        returnDocument: 'after',
+      },
+    );
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    if (updateTaskDto.status && oldTask.status !== updateTaskDto.status) {
+      await this.taskHistoryService.create(
+        taskId,
+        adminId,
+        oldTask.status,
+        updateTaskDto.status,
+      );
+    }
 
     return task;
   }

@@ -23,6 +23,7 @@ import type { RequestWithUser } from '../auth/types/request-with-user.type';
 import { UserRole } from '../users/users.schema';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateTaskDto } from './dto/update-task.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { TasksService } from './tasks.service';
 import { TaskStatus } from './tasks.schema';
@@ -117,6 +118,17 @@ export class TasksController {
         deadlineInDays: deadlineInDays ? Number(deadlineInDays) : undefined,
       },
     );
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtGuard, RolesGuard)
+  @Roles(UserRole.Admin)
+  update(
+    @Param('id') id: string,
+    @Body() updateTaskDto: UpdateTaskDto,
+    @Req() req: RequestWithUser,
+  ) {
+    return this.tasksService.updateAdminTask(id, req.user.sub, updateTaskDto);
   }
 
   @Patch(':id/status')
